@@ -124,6 +124,10 @@ Puma::Plugin.create do
     tags
   end
 
+  def environment
+    ENV.fetch('STATSD_ENVIRONMENT')
+  end
+
   # Send data to statsd every few seconds
   def stats_loop
     sleep 5
@@ -131,12 +135,13 @@ Puma::Plugin.create do
       @launcher.events.debug "statsd: notify statsd"
       begin
         stats = ::PumaStats.new(fetch_stats)
-        @statsd.send(metric_name: "puma.workers", value: stats.workers, type: :gauge, tags: tags)
-        @statsd.send(metric_name: "puma.booted_workers", value: stats.booted_workers, type: :gauge, tags: tags)
-        @statsd.send(metric_name: "puma.running", value: stats.running, type: :gauge, tags: tags)
-        @statsd.send(metric_name: "puma.backlog", value: stats.backlog, type: :gauge, tags: tags)
-        @statsd.send(metric_name: "puma.pool_capacity", value: stats.pool_capacity, type: :gauge, tags: tags)
-        @statsd.send(metric_name: "puma.max_threads", value: stats.max_threads, type: :gauge, tags: tags)
+        base_path = environment ? "#{environment}.puma" : 'puma'
+        @statsd.send(metric_name: "#{base_path}.workers", value: stats.workers, type: :gauge, tags: tags)
+        @statsd.send(metric_name: "#{base_path}.booted_workers", value: stats.booted_workers, type: :gauge, tags: tags)
+        @statsd.send(metric_name: "#{base_path}.running", value: stats.running, type: :gauge, tags: tags)
+        @statsd.send(metric_name: "#{base_path}.backlog", value: stats.backlog, type: :gauge, tags: tags)
+        @statsd.send(metric_name: "#{base_path}.pool_capacity", value: stats.pool_capacity, type: :gauge, tags: tags)
+        @statsd.send(metric_name: "#{base_path}.max_threads", value: stats.max_threads, type: :gauge, tags: tags)
       rescue StandardError => e
         @launcher.events.error "! statsd: notify stats failed:\n  #{e.to_s}\n  #{e.backtrace.join("\n    ")}"
       ensure
